@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>SHOP CAO MINH DUY V80</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root { --bg: #0b0b12; --cyan: #00f2ff; --gold: #ffcc00; --card: #1a1a2e; --red: #ff4444; --vip: #ff00ff; }
+        body { background: var(--bg); color: white; font-family: sans-serif; padding: 10px; margin: 0; }
+        .box { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #2a2a40; margin-bottom: 15px; position: relative; }
+        input, textarea { width: 100%; padding: 12px; margin: 5px 0; border-radius: 8px; border: 1px solid #333; background: #000; color: #fff; box-sizing: border-box; outline: none; }
+        button { border: none; padding: 12px; border-radius: 8px; font-weight: 800; cursor: pointer; width: 100%; transition: 0.2s; text-transform: uppercase; }
+        button:active { transform: scale(0.95); }
+        .btn-main { background: var(--cyan); color: #000; }
+        .btn-gold { background: var(--gold); color: #000; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .adm-sec { border: 2px solid var(--red); padding: 10px; border-radius: 12px; margin-bottom: 15px; display: none; }
+        #qr-display { text-align: center; margin-top: 15px; display: none; background: #fff; padding: 15px; border-radius: 15px; border: 3px solid var(--cyan); animation: fade 0.5s; }
+        @keyframes fade { from {opacity: 0;} to {opacity: 1;} }
+        #qr-display img { width: 220px; height: 220px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #eee; }
+        #qr-display p { color: #000; margin: 2px 0; font-size: 13px; }
+        table { width:100%; font-size:11px; border-collapse: collapse; margin-top: 5px; }
+        td, th { padding: 8px 4px; border-bottom: 1px solid #222; text-align: left; }
+        .tag-vip { color: var(--vip); font-weight: bold; text-shadow: 0 0 5px var(--vip); }
+        .price-tag { display: block; font-size: 10px; opacity: 0.8; margin-top: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-ui" style="max-width:400px; margin:50px auto; padding:10px;">
+        <div class="box">
+            <h3 style="text-align:center; color:var(--cyan); margin:0 0 15px 0">HỆ THỐNG SHOP V80</h3>
+            <input type="text" id="au" placeholder="Tài khoản">
+            <input type="password" id="ap" placeholder="Mật khẩu">
+            <div class="grid">
+                <button class="btn-main" onclick="auth('login')">ĐĂNG NHẬP</button>
+                <button style="background:#444; color:#fff" onclick="auth('reg')">ĐĂNG KÝ</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="shop-ui" style="display:none; max-width: 500px; margin: auto; padding: 10px;">
+        
+        <div id="adm-box" class="adm-sec">
+            <h4 style="color:var(--red); text-align:center; margin:0 0 10px 0">QUẢN TRỊ SHOP</h4>
+            <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+                <input type="number" id="adm-p-ngay" placeholder="Giá N">
+                <input type="number" id="adm-p-tuan" placeholder="Giá T">
+                <input type="number" id="adm-p-thang" placeholder="Giá Th">
+                <input type="number" id="adm-p-nam" placeholder="Giá Nam">
+            </div>
+            <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+                <input type="number" id="adm-v-ngay" placeholder="Vip N">
+                <input type="number" id="adm-v-tuan" placeholder="Vip T">
+                <input type="number" id="adm-v-thang" placeholder="Vip Th">
+                <input type="number" id="adm-v-nam" placeholder="Vip Nam">
+            </div>
+            <div class="grid">
+                <input type="number" id="adm-p-roll" placeholder="Giá Quay">
+                <input type="number" id="adm-v-roll" placeholder="Quay VIP">
+                <input type="number" id="adm-rate" placeholder="% Trúng">
+            </div>
+            <button class="btn-main" onclick="saveSettings()">LƯU THÔNG SỐ</button>
+            <textarea id="add-k" placeholder="Dán key..." style="margin-top:10px; height:50px"></textarea>
+            <div class="grid" style="grid-template-columns: repeat(4, 1fr);">
+                <button class="btn-main" onclick="upK('ngay')">+N</button>
+                <button class="btn-main" onclick="upK('tuan')">+T</button>
+                <button class="btn-main" onclick="upK('thang')">+Th</button>
+                <button class="btn-main" onclick="upK('nam')">+Nam</button>
+            </div>
+            <h5 style="margin:10px 0 5px 0">DUYỆT NẠP & USER:</h5>
+            <div id="adm-pay-list"></div>
+            <div style="max-height:150px; overflow-y:auto; margin-top:10px;"><table id="adm-user-list"></table></div>
+        </div>
+
+        <div class="box">
+            <p>Sếp: <b id="u-id" style="color:var(--cyan)"></b> <span id="u-rank" class="tag-vip"></span> | Ví: <b id="u-bl" style="color:var(--gold)">0</b>đ</p>
+            <input type="number" id="n-amt" placeholder="Số tiền nạp...">
+            <button class="btn-gold" onclick="nap()">NẠP TIỀN QUA QR</button>
+            <div id="qr-display">
+                <p style="color:#555; font-size:10px; font-style:italic">Đang tạo mã QR...</p>
+                <img id="qr-img" src="">
+                <p style="font-weight:bold;">MB BANK: 0588807300000</p>
+                <p>Chủ TK: <b>CAO MINH DUY</b></p>
+                <p style="color:blue !important; font-weight:bold;">ND: <span id="txt-nd"></span></p>
+                <div class="grid" style="margin-top:10px">
+                    <button class="btn-main" onclick="confirmNap()">XÁC NHẬN</button>
+                    <button style="background:#444; color:#fff" onclick="document.getElementById('qr-display').style.display='none'">HỦY</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="box" style="text-align:center;">
+            <h4 style="color:var(--gold); margin:0">🎲 VÒNG QUAY MAY MẮN</h4>
+            <p style="font-size:11px">Giá: <b id="view-p-roll">0</b>đ/lượt</p>
+            <div class="grid">
+                <button class="btn-gold" onclick="roll('tuan')">QUAY TUẦN</button>
+                <button class="btn-gold" onclick="roll('thang')">QUAY THÁNG</button>
+                <button class="btn-gold" onclick="roll('nam')">QUAY NĂM</button>
+            </div>
+            <p id="roll-res" style="font-size:13px; font-weight:bold; margin-top:10px; min-height:18px"></p>
+        </div>
+
+        <div class="box">
+            <h4 style="color:var(--cyan); margin:0 0 10px 0; text-align:center;">🛒 CỬA HÀNG KEY</h4>
+            <div class="grid">
+                <button class="btn-main" onclick="buy('ngay')">NGÀY (<span id="s-ngay">0</span>) <span class="price-tag" id="pr-ngay">0đ</span></button>
+                <button class="btn-main" onclick="buy('tuan')">TUẦN (<span id="s-tuan">0</span>) <span class="price-tag" id="pr-tuan">0đ</span></button>
+                <button class="btn-main" onclick="buy('thang')">THÁNG (<span id="s-thang">0</span>) <span class="price-tag" id="pr-thang">0đ</span></button>
+                <button class="btn-main" onclick="buy('nam')">NĂM (<span id="s-nam">0</span>) <span class="price-tag" id="pr-nam">0đ</span></button>
+            </div>
+        </div>
+
+        <div class="box">
+            <h4>📜 LỊCH SỬ</h4>
+            <table><tbody id="h-list"></tbody></table>
+        </div>
+    </div>
+
+<script>
+    const firebaseConfig = { databaseURL: "https://shopmduy-default-rtdb.asia-southeast1.firebasedatabase.app" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let curU, curUID, isVIP = false, settings = { rate: 10 };
+
+    function auth(type) {
+        const u = document.getElementById('au').value.trim().toLowerCase(), p = document.getElementById('ap').value;
+        if(!u || !p) return alert("Điền đủ info!");
+        if(type === 'reg') {
+            db.ref('users/'+u).set({password:p, balance:0, role:'user', isVIP:false, uid:"U"+Date.now()}).then(()=>alert("Đăng ký xong!"));
+        } else {
+            db.ref('users/'+u).once('value', s => {
+                const d = s.val();
+                if(d && d.password === p) {
+                    curU = u; curUID = d.uid;
+                    document.getElementById('auth-ui').style.display = 'none';
+                    document.getElementById('shop-ui').style.display = 'block';
+                    document.getElementById('u-id').innerText = u;
+                    if(d.role === 'admin') document.getElementById('adm-box').style.display = 'block';
+                    db.ref('users/'+u+'/isVIP').on('value', v => {
+                        isVIP = v.val() || false;
+                        document.getElementById('u-rank').innerText = isVIP ? "[VIP]" : "";
+                        updatePrice();
+                    });
+                    db.ref('users/'+u+'/balance').on('value', b => document.getElementById('u-bl').innerText = (b.val()||0).toLocaleString());
+                    init();
+                } else alert("Sai tài khoản!");
+            });
+        }
+    }
+
+    function nap() {
+        const amt = Number(document.getElementById('n-amt').value);
+        if(amt < 1000) return alert("Nạp tối thiểu 1.000đ!");
+        const nd = `NAP ${curU.toUpperCase()}`;
+        const qr = `https://img.vietqr.io/image/mbbank-0588807300000-compact2.png?amount=${amt}&addInfo=${encodeURIComponent(nd)}&accountName=CAO%20MINH%20DUY`;
+        document.getElementById('qr-img').src = qr;
+        document.getElementById('txt-nd').innerText = nd;
+        document.getElementById('qr-display').style.display = 'block';
+        db.ref('bank_requests').push({user:curU, amount:amt, time:new Date().toLocaleString()});
+    }
+
+    function confirmNap() { alert("Đã báo duyệt!"); document.getElementById('qr-display').style.display = 'none'; }
+
+    function roll(t) {
+        const p = isVIP ? settings.v_roll : settings.p_roll;
+        const res = document.getElementById('roll-res');
+        db.ref('users/'+curU+'/balance').once('value', s => {
+            let b = s.val() || 0; if(b < p) return alert("Hết tiền!");
+            db.ref('users/'+curU+'/balance').set(b - p);
+            res.innerText = "🎲 Đang quay...";
+            setTimeout(() => {
+                if(Math.floor(Math.random()*100) < settings.rate) {
+                    db.ref('key_store/'+t).limitToFirst(1).once('value', snap => {
+                        if(!snap.exists()) { 
+                            res.innerHTML = `<span style="color:var(--red)">HỤT RỒI!</span>`;
+                            db.ref('history_pay/'+curUID).push({time:new Date().toLocaleString(), amount:"QUAY "+t.toUpperCase(), status:"HỤT"});
+                        } else {
+                            let kID = Object.keys(snap.val())[0], kV = snap.val()[kID];
+                            db.ref('key_store/'+t+'/'+kID).remove();
+                            db.ref('history_pay/'+curUID).push({time:new Date().toLocaleString(), amount:"TRÚNG "+t.toUpperCase(), status:kV});
+                            res.innerHTML = `<span style="color:var(--cyan)">🔥 KEY: ${kV}</span>`;
+                        }
+                    });
+                } else {
+                    res.innerHTML = `<span style="color:var(--red)">CHÚC MAY MẮN!</span>`;
+                    db.ref('history_pay/'+curUID).push({time:new Date().toLocaleString(), amount:"QUAY "+t.toUpperCase(), status:"HỤT"});
+                }
+            }, 800);
+        });
+    }
+
+    function buy(t) {
+        const p = isVIP ? settings['v_'+t] : settings['p_'+t];
+        db.ref('users/'+curU+'/balance').once('value', s => {
+            let b = s.val() || 0; if(b < p) return alert("Hết tiền!");
+            db.ref('key_store/'+t).limitToFirst(1).once('value', snap => {
+                if(!snap.exists()) return alert("Hết hàng!");
+                db.ref('users/'+curU+'/balance').set(b - p);
+                let kID = Object.keys(snap.val())[0], kV = snap.val()[kID];
+                db.ref('key_store/'+t+'/'+kID).remove();
+                db.ref('history_pay/'+curUID).push({time:new Date().toLocaleString(), amount:"MUA "+t.toUpperCase(), status:kV});
+                alert("KEY: " + kV);
+            });
+        });
+    }
+
+    function saveSettings() {
+        const d = {
+            rate: Number(document.getElementById('adm-rate').value),
+            p_roll: Number(document.getElementById('adm-p-roll').value),
+            p_ngay: Number(document.getElementById('adm-p-ngay').value),
+            p_tuan: Number(document.getElementById('adm-p-tuan').value),
+            p_thang: Number(document.getElementById('adm-p-thang').value),
+            p_nam: Number(document.getElementById('adm-p-nam').value),
+            v_roll: Number(document.getElementById('adm-v-roll').value),
+            v_ngay: Number(document.getElementById('adm-v-ngay').value),
+            v_tuan: Number(document.getElementById('adm-v-tuan').value),
+            v_thang: Number(document.getElementById('adm-v-thang').value),
+            v_nam: Number(document.getElementById('adm-v-nam').value)
+        };
+        db.ref('system/settings').set(d).then(() => alert("Lưu xong!"));
+    }
+
+    function updatePrice() {
+        const pre = isVIP ? 'v_' : 'p_';
+        document.getElementById('view-p-roll').innerText = (settings[pre+'roll']||0).toLocaleString();
+        ['ngay','tuan','thang','nam'].forEach(t => {
+            const p = (settings[pre+t]||0);
+            document.getElementById('pr-'+t).innerText = p.toLocaleString() + "đ";
+        });
+    }
+
+    function upK(t) {
+        const nK = document.getElementById('add-k').value.trim().split('\n').filter(k=>k.trim()!=="");
+        nK.forEach(k => db.ref('key_store/'+t).push(k.trim()));
+        alert("Đã thêm!"); document.getElementById('add-k').value="";
+    }
+
+    function init() {
+        db.ref('system/settings').on('value', s => {
+            if(s.exists()) {
+                settings = s.val(); updatePrice();
+                if(document.getElementById('adm-rate')) {
+                    document.getElementById('adm-rate').value = settings.rate;
+                    ['p_roll','p_ngay','p_tuan','p_thang','p_nam','v_roll','v_ngay','v_tuan','v_thang','v_nam'].forEach(x => {
+                        const el = document.getElementById('adm-'+x.replace('_','-'));
+                        if(el) el.value = settings[x] || 0;
+                    });
+                }
+            }
+        });
+        ['ngay','tuan','thang','nam'].forEach(t => db.ref('key_store/'+t).on('value', s => document.getElementById('s-'+t).innerText = s.numChildren()));
+        db.ref('history_pay/'+curUID).on('value', h => {
+            const t = document.getElementById('h-list'); t.innerHTML = "";
+            h.forEach(c => { const i = c.val(); t.innerHTML = `<tr><td>${i.time}</td><td>${i.amount}</td><td style="color:var(--cyan)">${i.status}</td></tr>` + t.innerHTML; });
+        });
+        db.ref('bank_requests').on('value', s => {
+            const l = document.getElementById('adm-pay-list'); l.innerHTML = "";
+            s.forEach(c => { const r = c.val(); l.innerHTML += `<div style="font-size:11px; margin-bottom:5px">${r.user}: ${r.amount}đ <button style="background:var(--cyan);padding:2px" onclick="db.ref('users/${r.user}/balance').transaction(v=>(v||0)+${r.amount}); db.ref('bank_requests/${c.key}').remove()">DUYỆT</button> <button style="background:var(--red);padding:2px" onclick="db.ref('bank_requests/${c.key}').remove()">X</button></div>`; });
+        });
+        db.ref('users').on('value', s => {
+            const l = document.getElementById('adm-user-list'); l.innerHTML = "<tr><th>User</th><th>Ví</th><th>VIP</th><th>Xóa</th></tr>";
+            s.forEach(c => { const u = c.val(); l.innerHTML += `<tr><td>${c.key}</td><td>${(u.balance||0).toLocaleString()}</td><td><button onclick="db.ref('users/${c.key}/isVIP').set(${!u.isVIP})" style="background:${u.isVIP?'var(--vip)':'#444'};padding:2px">${u.isVIP?'Hủy':'Lên'}</button></td><td><button onclick="db.ref('users/${c.key}').remove()" style="background:var(--red);padding:2px">X</button></td></tr>`; });
+        });
+    }
+</script>
+</body>
+</html>
